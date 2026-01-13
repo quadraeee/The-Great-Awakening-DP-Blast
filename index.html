@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estacion Dos - DP Blast</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #f4f4f4; padding: 20px; }
+        
+        h1 { color: #800000; margin-bottom: 5px; }
+        p { color: #555; font-size: 0.9rem; }
+
+        .editor-container {
+            margin: 0 auto;
+            max-width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        canvas {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border: 2px dashed #ccc;
+            cursor: move;
+            touch-action: none;
+            border-radius: 4px;
+        }
+
+        .controls { margin-top: 20px; }
+        input[type="file"] { margin-bottom: 15px; }
+        
+        /* Main Action Buttons */
+        .btn {
+            background-color: #d35400; /* Engineering Orange */
+            color: white; 
+            border: none; 
+            padding: 12px 25px;
+            font-size: 16px; 
+            font-weight: bold;
+            border-radius: 25px; 
+            cursor: pointer; 
+            margin-top: 10px;
+            width: 80%;
+            transition: background 0.3s;
+        }
+        .btn:hover { background-color: #a04000; }
+
+        /* Caption Section Styles */
+        .caption-area {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        textarea {
+            width: 90%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            resize: none;
+            font-family: inherit;
+            margin-bottom: 10px;
+        }
+        .copy-btn {
+            background-color: #333;
+            color: white;
+        }
+        .copy-btn:hover { background-color: #555; }
+        
+        input[type="range"] { width: 80%; accent-color: #d35400; }
+    </style>
+</head>
+<body>
+
+    <div class="editor-container">
+        <h1>ESTACION DOS</h1>
+        <p>ECE Department | DP Blast Campaign</p>
+        
+        <div style="margin: 15px 0;">
+            <input type="file" id="upload" accept="image/*">
+        </div>
+
+        <canvas id="canvas" width="1080" height="1080"></canvas>
+
+        <div class="controls">
+            <label><strong>Adjust Zoom</strong></label><br>
+            <input type="range" id="scale" min="0.5" max="3" step="0.01" value="1"><br>
+            <button id="downloadBtn" class="btn">Download My DP</button>
+        </div>
+
+        <div class="caption-area">
+            <h3>Copy Caption</h3>
+            <textarea id="captionText" readonly>test</textarea>
+            <button id="copyBtn" class="btn copy-btn">Copy Caption</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const upload = document.getElementById('upload');
+        const scaleInput = document.getElementById('scale');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const captionText = document.getElementById('captionText');
+
+        let frameImg = new Image();
+        let userImg = new Image();
+        let uploaded = false;
+        
+        let imgX = 0, imgY = 0, scale = 1;
+        let isDragging = false;
+        let startX, startY;
+
+        frameImg.src = 'frame.png'; 
+        frameImg.onload = () => draw();
+
+        upload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                userImg.src = event.target.result;
+                userImg.onload = () => {
+                    uploaded = true;
+                    scale = 1;
+                    scaleInput.value = 1;
+                    imgX = (canvas.width - userImg.width) / 2;
+                    imgY = (canvas.height - userImg.height) / 2;
+                    draw();
+                };
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (uploaded) {
+                ctx.save();
+                let centerX = canvas.width / 2;
+                let centerY = canvas.height / 2;
+                ctx.translate(centerX, centerY);
+                ctx.scale(scale, scale);
+                ctx.translate(-centerX, -centerY);
+                ctx.drawImage(userImg, imgX, imgY);
+                ctx.restore();
+            }
+            ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+        }
+
+        scaleInput.addEventListener('input', (e) => {
+            scale = parseFloat(e.target.value);
+            draw();
+        });
+
+        // Dragging Logic
+        function startDrag(x, y) {
+            isDragging = true;
+            startX = x;
+            startY = y;
+        }
+        function moveDrag(x, y) {
+            if (isDragging && uploaded) {
+                imgX += (x - startX) / scale;
+                imgY += (y - startY) / scale;
+                startX = x;
+                startY = y;
+                draw();
+            }
+        }
+        function endDrag() { isDragging = false; }
+
+        canvas.addEventListener('mousedown', e => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            startDrag((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+        });
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            moveDrag((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+        });
+        window.addEventListener('mouseup', endDrag);
+
+        canvas.addEventListener('touchstart', e => {
+            e.preventDefault(); 
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            startDrag((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+        });
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            moveDrag((touch.clientX - rect.left) * scaleX, (touch.clientY - rect.top) * scaleY);
+        });
+        canvas.addEventListener('touchend', endDrag);
+
+        // Download Button
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'EstacionDos-DP.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        });
+
+        // Copy Caption Function
+        copyBtn.addEventListener('click', () => {
+            captionText.select();
+            captionText.setSelectionRange(0, 99999); /* For mobile devices */
+            navigator.clipboard.writeText(captionText.value).then(() => {
+                const originalText = copyBtn.innerText;
+                copyBtn.innerText = "Copied!";
+                copyBtn.style.backgroundColor = "#27ae60"; // Green color
+                setTimeout(() => {
+                    copyBtn.innerText = originalText;
+                    copyBtn.style.backgroundColor = "#333";
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
